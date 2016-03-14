@@ -22,6 +22,7 @@ import org.neo4j.ogm.context.EntityGraphMapper;
 import org.neo4j.ogm.metadata.ClassInfo;
 import org.neo4j.ogm.session.Capability;
 import org.neo4j.ogm.session.Neo4jSession;
+import org.neo4j.ogm.session.callback.SaveCallback;
 import org.neo4j.ogm.session.request.RequestExecutor;
 
 /**
@@ -33,7 +34,7 @@ public class SaveDelegate implements Capability.Save {
     private final Neo4jSession session;
     private final RequestExecutor requestExecutor;
 
-    public SaveDelegate(Neo4jSession neo4jSession) {
+    public SaveDelegate(Neo4jSession neo4jSession, SaveCallback saveCallback) {
         this.session = neo4jSession;
         requestExecutor = new RequestExecutor(neo4jSession);
     }
