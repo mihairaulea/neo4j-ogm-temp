@@ -22,8 +22,10 @@ import org.neo4j.ogm.cypher.query.SortOrder;
 import org.neo4j.ogm.driver.Driver;
 import org.neo4j.ogm.model.Result;
 import org.neo4j.ogm.request.Request;
-import org.neo4j.ogm.session.callback.DeleteCallback;
-import org.neo4j.ogm.session.callback.SaveCallback;
+import org.neo4j.ogm.session.event.DeleteEvent;
+import org.neo4j.ogm.session.event.Event;
+import org.neo4j.ogm.session.event.EventListener;
+import org.neo4j.ogm.session.event.SaveEvent;
 import org.neo4j.ogm.session.delegates.*;
 import org.neo4j.ogm.session.request.strategy.QueryStatements;
 import org.neo4j.ogm.session.request.strategy.VariableDepthQuery;
@@ -33,8 +35,7 @@ import org.neo4j.ogm.transaction.Transaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collection;
-import java.util.Map;
+import java.util.*;
 
 /**
  * @author Vince Bickers
@@ -48,20 +49,19 @@ public class Neo4jSession implements Session {
     private final MappingContext mappingContext;
     private final DefaultTransactionManager txManager;
 
-    private final DeleteCallback deleteCallback = new DeleteCallback();
-    private final SaveCallback saveCallback = new SaveCallback();
-
     private final LoadOneDelegate loadOneHandler = new LoadOneDelegate(this);
     private final LoadByTypeDelegate loadByTypeHandler = new LoadByTypeDelegate(this);
     private final LoadByIdsDelegate loadByIdsHandler = new LoadByIdsDelegate(this);
     private final LoadByInstancesDelegate loadByInstancesDelegate = new LoadByInstancesDelegate(this);
-    private final SaveDelegate saveDelegate = new SaveDelegate(this, saveCallback);
-    private final DeleteDelegate deleteDelegate = new DeleteDelegate(this,deleteCallback);
+    private final SaveDelegate saveDelegate = new SaveDelegate(this);
+    private final DeleteDelegate deleteDelegate = new DeleteDelegate(this);
     private final ExecuteQueriesDelegate executeQueriesDelegate = new ExecuteQueriesDelegate(this);
     private final TransactionsDelegate transactionsDelegate = new TransactionsDelegate(this);
     private final GraphIdDelegate graphIdDelegate = new GraphIdDelegate(this);
 
     private Driver driver;
+
+    private List<EventListener> registeredEventListeners = new LinkedList<>();
 
     public Neo4jSession(MetaData metaData, Driver driver) {
 
@@ -72,6 +72,20 @@ public class Neo4jSession implements Session {
         this.txManager = new DefaultTransactionManager(this, driver);
     }
 
+    @Override
+    public void register(EventListener eventListener) {
+        registeredEventListeners.add(eventListener);
+    }
+
+    @Override
+    public void notifyListeners(Event event) {
+        Iterator<EventListener> eventListenerIterator = registeredEventListeners.iterator();
+        while(eventListenerIterator.hasNext()) {
+            EventListener eventListener = eventListenerIterator.next();
+            if (eventListener == null) registeredEventListeners.remove(eventListener);
+            else eventListener.update(event);
+        }
+    }
     /*
      *----------------------------------------------------------------------------------------------------------
      * loadOneHandler
@@ -366,6 +380,7 @@ public class Neo4jSession implements Session {
     */
     @Override
     public <T> void save(T object) {
+        System.out.println("Save :"+object.toString());
         saveDelegate.save(object);
     }
 

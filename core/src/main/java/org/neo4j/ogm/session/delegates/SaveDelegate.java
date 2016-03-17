@@ -15,6 +15,7 @@ package org.neo4j.ogm.session.delegates;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 
 import org.neo4j.ogm.compiler.CompileContext;
@@ -22,7 +23,7 @@ import org.neo4j.ogm.context.EntityGraphMapper;
 import org.neo4j.ogm.metadata.ClassInfo;
 import org.neo4j.ogm.session.Capability;
 import org.neo4j.ogm.session.Neo4jSession;
-import org.neo4j.ogm.session.callback.SaveCallback;
+import org.neo4j.ogm.session.event.SaveEvent;
 import org.neo4j.ogm.session.request.RequestExecutor;
 
 /**
@@ -34,7 +35,7 @@ public class SaveDelegate implements Capability.Save {
     private final Neo4jSession session;
     private final RequestExecutor requestExecutor;
 
-    public SaveDelegate(Neo4jSession neo4jSession, SaveCallback saveCallback) {
+    public SaveDelegate(Neo4jSession neo4jSession) {
         this.session = neo4jSession;
         requestExecutor = new RequestExecutor(neo4jSession);
     }
@@ -60,6 +61,7 @@ public class SaveDelegate implements Capability.Save {
             }
             List<CompileContext> contexts = new ArrayList<>();
             for (Object element : objects) {
+                System.out.println(element);
                 contexts.add(new EntityGraphMapper(session.metaData(), session.context()).map(element, depth));
             }
             requestExecutor.executeSave(contexts);
@@ -68,10 +70,36 @@ public class SaveDelegate implements Capability.Save {
             ClassInfo classInfo = session.metaData().classInfo(object);
             if (classInfo != null) {
                 CompileContext context = new EntityGraphMapper(session.metaData(), session.context()).map(object, depth);
+                notifyPreSave(context);
                 requestExecutor.executeSave(context);
+                notifyPostSave(context);
             } else {
                 session.warn(object.getClass().getName() + " is not an instance of a persistable class");
             }
+        }
+    }
+
+    private void notifyPreSave(CompileContext context) {
+        Iterator<Object> affectedObjectsIterator = context.registry().iterator();
+        while(affectedObjectsIterator.hasNext()) {
+            SaveEvent saveEvent = new SaveEvent();
+            saveEvent.LIFECYCLE = SaveEvent.PRE;
+            // should i do something, if it is a TransientRelationship ?
+            Object affectedObject = affectedObjectsIterator.next();
+            saveEvent.affectedObject = affectedObject;
+            session.notifyListeners(saveEvent);
+        }
+    }
+
+    private void notifyPostSave(CompileContext context) {
+        Iterator<Object> affectedObjectsIterator = context.registry().iterator();
+        while(affectedObjectsIterator.hasNext()) {
+            SaveEvent saveEvent = new SaveEvent();
+            saveEvent.LIFECYCLE = SaveEvent.POST;
+            // should i do something, if it is a TransientRelationship ?
+            Object affectedObject = affectedObjectsIterator.next();
+            saveEvent.affectedObject = affectedObject;
+            session.notifyListeners(saveEvent);
         }
     }
 

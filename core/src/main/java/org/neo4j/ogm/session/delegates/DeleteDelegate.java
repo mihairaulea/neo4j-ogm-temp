@@ -21,7 +21,7 @@ import org.neo4j.ogm.annotations.FieldWriter;
 import org.neo4j.ogm.metadata.ClassInfo;
 import org.neo4j.ogm.session.Capability;
 import org.neo4j.ogm.session.Neo4jSession;
-import org.neo4j.ogm.session.callback.DeleteCallback;
+import org.neo4j.ogm.session.event.DeleteEvent;
 import org.neo4j.ogm.session.request.strategy.DeleteNodeStatements;
 import org.neo4j.ogm.session.request.strategy.DeleteRelationshipStatements;
 import org.neo4j.ogm.session.request.strategy.DeleteStatements;
@@ -37,7 +37,7 @@ public class DeleteDelegate implements Capability.Delete {
 
     private final Neo4jSession session;
 
-    public DeleteDelegate(Neo4jSession neo4jSession, DeleteCallback deleteCallback) {
+    public DeleteDelegate(Neo4jSession neo4jSession) {
         this.session = neo4jSession;
     }
 
