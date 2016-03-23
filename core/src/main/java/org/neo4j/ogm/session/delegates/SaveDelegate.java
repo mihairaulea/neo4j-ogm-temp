@@ -69,35 +69,26 @@ public class SaveDelegate implements Capability.Save {
         else {
             ClassInfo classInfo = session.metaData().classInfo(object);
             if (classInfo != null) {
+                session.context();
                 CompileContext context = new EntityGraphMapper(session.metaData(), session.context()).map(object, depth);
-                notifyPreSave(context);
+                notifySave(context, SaveEvent.PRE);
                 requestExecutor.executeSave(context);
-                notifyPostSave(context);
+                notifySave(context, SaveEvent.POST);
             } else {
                 session.warn(object.getClass().getName() + " is not an instance of a persistable class");
             }
         }
     }
 
-    private void notifyPreSave(CompileContext context) {
+    private void notifySave(CompileContext context, String lifecycle) {
         Iterator<Object> affectedObjectsIterator = context.registry().iterator();
         while(affectedObjectsIterator.hasNext()) {
             SaveEvent saveEvent = new SaveEvent();
-            saveEvent.LIFECYCLE = SaveEvent.PRE;
+            saveEvent.LIFECYCLE = lifecycle;
             // should i do something, if it is a TransientRelationship ?
             Object affectedObject = affectedObjectsIterator.next();
-            saveEvent.affectedObject = affectedObject;
-            session.notifyListeners(saveEvent);
-        }
-    }
-
-    private void notifyPostSave(CompileContext context) {
-        Iterator<Object> affectedObjectsIterator = context.registry().iterator();
-        while(affectedObjectsIterator.hasNext()) {
-            SaveEvent saveEvent = new SaveEvent();
-            saveEvent.LIFECYCLE = SaveEvent.POST;
-            // should i do something, if it is a TransientRelationship ?
-            Object affectedObject = affectedObjectsIterator.next();
+            ClassInfo classInfo = this.session.metaData().classInfo(affectedObject) ;//metaData.classInfo(entity);
+            // TransientRelationship does not have ClassInfo
             saveEvent.affectedObject = affectedObject;
             session.notifyListeners(saveEvent);
         }

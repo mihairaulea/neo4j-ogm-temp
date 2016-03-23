@@ -31,6 +31,8 @@ import org.neo4j.ogm.transaction.Transaction;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -97,6 +99,10 @@ public class RequestExecutor {
 				try (Response<RowModel> response = session.requestHandler().execute(defaultRequest)) {
 					registerNewEntityIds(context, response, entityReferenceMappings);
 					registerNewRelIds(response, relReferenceMappings);
+					// if we had any update statements, then refresh the hashes of the objects
+					if(compiler.updateNodesStatements().size()>0) {
+						updateSessionContext(context);
+					}
 				}
 			}
 		}
@@ -105,6 +111,19 @@ public class RequestExecutor {
 		updateEntities(context, session, entityReferenceMappings);
 		updateEntities(context, session, relReferenceMappings);
 		updateRelationships(context, session, relReferenceMappings);
+	}
+
+	private void updateSessionContext(CompileContext context) {
+		Iterator<Object> iterator = context.registry().iterator();
+		while (iterator.hasNext()) {
+			Object targetObject = iterator.next();
+			if(!(targetObject instanceof TransientRelationship)) {
+				ClassInfo classInfo = session.metaData().classInfo(targetObject);
+				Field identityField = classInfo.getField(classInfo.identityField());
+				Object value = FieldWriter.read(identityField, targetObject);
+				if (value != null) session.context().replace(targetObject, (Long) value);
+			}
+		}
 	}
 
 	/**

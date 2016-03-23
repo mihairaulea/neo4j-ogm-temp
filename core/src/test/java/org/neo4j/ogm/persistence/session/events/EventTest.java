@@ -1,7 +1,8 @@
 package org.neo4j.ogm.persistence.session.events;
 
-import junit.framework.Assert;
+import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.neo4j.ogm.domain.filesystem.Document;
 import org.neo4j.ogm.domain.filesystem.Folder;
@@ -9,20 +10,13 @@ import org.neo4j.ogm.session.Session;
 import org.neo4j.ogm.session.SessionFactory;
 import org.neo4j.ogm.session.event.Event;
 import org.neo4j.ogm.session.event.EventListener;
-import org.neo4j.ogm.session.event.SaveEvent;
-
 import java.io.IOException;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 /**
  * Created by Mihai Raulea on 3/14/2016.
  */
+@Ignore
 public class EventTest {
 
     private Session session;
@@ -30,7 +24,7 @@ public class EventTest {
     Document b;
     Document c;
     Document d;
-    Folder f;
+    Folder folder;
 
     EventListenerTest eventListenerTest;
 
@@ -40,7 +34,7 @@ public class EventTest {
         eventListenerTest = null;
         SessionFactory sessionFactory = new SessionFactory("org.neo4j.ogm.domain.filesystem");
         session = sessionFactory.openSession();
-
+        session.purgeDatabase();
         a = new Document();
         a.setName("a");
 
@@ -54,19 +48,33 @@ public class EventTest {
         d = new Document();
         d.setName("d");
 
-        f = new Folder();
-        f.setName("f");
+        folder = new Folder();
+        folder.setName("folder");
 
-        f.getDocuments().add(a);
-        f.getDocuments().add(b);
-        f.getDocuments().add(c);
+        folder.getDocuments().add(a);
+        folder.getDocuments().add(b);
+        folder.getDocuments().add(c);
 
-        a.setFolder(f);
-        b.setFolder(f);
+        a.setFolder(folder);
+        b.setFolder(folder);
+        c.setFolder(folder);
 
-        session.save(f);
+        session.save(folder);
     }
+
     // TODO: write tests to assert that the objects retrieved from the context are the expected ones
+    @Test
+    public void noEventsShouldFire() {
+        this.eventListenerTest = new EventListenerTest(0);
+        session.register(eventListenerTest);
+
+        session.save(folder);
+        Document aa = session.load(Document.class, a.getId());
+        Document bb = session.load(Document.class, b.getId());
+
+        testExpectedNumberOfEventsInQueue(eventListenerTest, 0);
+    }
+
     @Test
     public void testAddOneNode() {
         eventListenerTest = new EventListenerTest(2);
@@ -87,45 +95,156 @@ public class EventTest {
 
     @Test
     public void testAddMultipleNodes() {
-        // we should only be saving one node, now
-        session.save(a);
-        session.save(b);
-        session.save(c);
-        session.save(d);
-
-        eventListenerTest = new EventListenerTest(2);
+        eventListenerTest = new EventListenerTest(6);
         session.register(eventListenerTest);
 
         Document e = new Document();
         e.setName("e");
-
         session.save(e);
 
         Document f = new Document();
-        e.setName("f");
+        f.setName("f");
+        session.save(f);
 
-        session.save(e);
+        Document g = new Document();
+        g.setName("g");
+        session.save(g);
+
+        Class[] expectedObjectTypes = new Class[6];
+        for(int i=0;i<6;i++)
+            expectedObjectTypes[i] = Document.class;
+
+        testExpectedNumberOfEventsInQueue(eventListenerTest,6);
+        testExpectedSequenceTargetObjectTypes(eventListenerTest, expectedObjectTypes);
     }
 
     @Test
     public void testAlterMultipleNodes() {
+        eventListenerTest = new EventListenerTest(6);
+        session.register(eventListenerTest);
 
+        Document e = new Document();
+        e.setName("newE");
+        session.save(e);
+
+        Document f = new Document();
+        f.setName("newF");
+        session.save(f);
+
+        Document g = new Document();
+        g.setName("newG");
+        session.save(g);
+
+        Class[] expectedObjectTypes = new Class[6];
+        for(int i=0;i<6;i++)
+            expectedObjectTypes[i] = Document.class;
+
+        testExpectedNumberOfEventsInQueue(eventListenerTest,6);
+        testExpectedSequenceTargetObjectTypes(eventListenerTest, expectedObjectTypes);
+    }
+
+    @Test
+    public void testAddAndAlterMultipleUnconnectedNodes() {
+        eventListenerTest = new EventListenerTest(8);
+        session.register(eventListenerTest);
+
+        // these nodes are new
+        Document e = new Document();
+        e.setName("newE");
+        session.save(e);
+
+        Document f = new Document();
+        f.setName("newF");
+        session.save(f);
+
+        Document g = new Document();
+        g.setName("newG");
+        session.save(g);
+
+        // this node is not connected to any other entities
+        d.setName("newD");
+        session.save(d);
+
+        Class[] expectedObjectTypes = new Class[8];
+        for(int i=0;i<8;i++)
+            expectedObjectTypes[i] = Document.class;
+
+        testExpectedNumberOfEventsInQueue(eventListenerTest,8);
+        testExpectedSequenceTargetObjectTypes(eventListenerTest, expectedObjectTypes);
+    }
+
+    @Test
+    public void testAddAndAlterConnectedNode() {
+        eventListenerTest = new EventListenerTest(8);
+        session.register(eventListenerTest);
+
+        Document e = new Document();
+        e.setName("newE");
+        session.save(e);
+
+        Document f = new Document();
+        f.setName("newF");
+        session.save(f);
+
+        Document g = new Document();
+        g.setName("newG");
+        session.save(g);
+
+        // even though the node is connected, the connected nodes are not dirty, so no additional events should fire
+        a.setName("newA");
+        session.save(a);
+
+        Class[] expectedObjectTypes = new Class[8];
+        for(int i=0;i<8;i++)
+            expectedObjectTypes[i] = Document.class;
+
+        testExpectedNumberOfEventsInQueue(eventListenerTest,8);
+        testExpectedSequenceTargetObjectTypes(eventListenerTest, expectedObjectTypes);
+    }
+
+    @Test
+    public void testAddAndAlterMultipleConnectedNode() {
+        int noOfExpectedEvents = 6;
+        eventListenerTest = new EventListenerTest(noOfExpectedEvents);
+        session.register(eventListenerTest);
+        /* debugging, turn these back on
+        Document e = new Document();
+        e.setName("newE");
+        session.save(e);
+
+        Document f = new Document();
+        f.setName("newF");
+        session.save(f);
+
+        Document g = new Document();
+        g.setName("newG");
+        session.save(g);
+        */
+        // even though the node is connected, the connected nodes are not dirty, so the context registry should only contain 1 node at a time
+        a.setName("newA");
+        session.save(a);
+
+        b.setName("newB");
+        session.save(b);
+
+        c.setName("newC");
+        session.save(c);
+
+        Class[] expectedObjectTypes = new Class[noOfExpectedEvents];
+        for(int i=0;i<noOfExpectedEvents;i++)
+            expectedObjectTypes[i] = Document.class;
+
+        testExpectedNumberOfEventsInQueue(eventListenerTest,noOfExpectedEvents);
+        testExpectedSequenceTargetObjectTypes(eventListenerTest, expectedObjectTypes);
     }
 
     @Test
     public void testAddOneRelationship() {
-        // we should only be saving one relationship, now
-        session.save(a);
-        session.save(b);
-        session.save(c);
-        session.save(d);
-
-
         eventListenerTest = new EventListenerTest(1);
         session.register(eventListenerTest);
 
         // c did not have a folder assigned in the init()
-        c.setFolder(f);
+        c.setFolder(folder);
         session.save(c);
 
         // a SaveEvent with a TransientRelationship is expected inside
@@ -168,21 +287,6 @@ public class EventTest {
     }
 
     @Test
-    public void noEventsShouldFire() {
-        this.eventListenerTest = new EventListenerTest(0);
-        session.register(eventListenerTest);
-
-        session.save(f);
-        Document aa = session.load(Document.class, a.getId());
-        Document bb = session.load(Document.class, b.getId());
-        System.out.println(aa.getName());
-        System.out.println(bb.getName());
-        System.out.println(f.getName());
-
-        testExpectedNumberOfEventsInQueue(eventListenerTest, 8);
-    }
-
-    @Test
     public void eventIntegrationTest() {
         this.eventListenerTest = new EventListenerTest(8);
         session.register(eventListenerTest);
@@ -190,14 +294,14 @@ public class EventTest {
         a.setName("newA");
         b.setName("newB");
         c.setName("newC");
-        f.setName("newF");
+        folder.setName("newFolder");
 
-        session.save(f);
+        session.save(folder);
         Document aa = session.load(Document.class, a.getId());
         Document bb = session.load(Document.class, b.getId());
         System.out.println(aa.getName());
         System.out.println(bb.getName());
-        System.out.println(f.getName());
+        System.out.println(folder.getName());
 
         testExpectedNumberOfEventsInQueue(eventListenerTest, 8);
     }
@@ -232,6 +336,11 @@ public class EventTest {
     class TargetObjectCount {
         public Class targetObjectType;
         public int count;
+    }
+
+    @After
+    public void clean() throws IOException {
+        session.purgeDatabase();
     }
 
 }
