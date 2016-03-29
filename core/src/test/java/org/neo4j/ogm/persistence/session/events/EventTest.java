@@ -1,30 +1,38 @@
 package org.neo4j.ogm.persistence.session.events;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.*;
+import org.neo4j.ogm.domain.cineasts.annotated.Actor;
+import org.neo4j.ogm.domain.cineasts.annotated.Knows;
 import org.neo4j.ogm.domain.filesystem.Document;
 import org.neo4j.ogm.domain.filesystem.Folder;
 import org.neo4j.ogm.session.Session;
 import org.neo4j.ogm.session.SessionFactory;
 import org.neo4j.ogm.session.event.Event;
 import org.neo4j.ogm.session.event.EventListener;
+import org.neo4j.ogm.testutil.MultiDriverTestClass;
+
 import java.io.IOException;
+import java.util.*;
+
 import static org.junit.Assert.assertTrue;
 
 /**
  * Created by Mihai Raulea on 3/14/2016.
  */
-@Ignore
-public class EventTest {
+public class EventTest extends MultiDriverTestClass {
 
     private Session session;
     Document a;
     Document b;
     Document c;
     Document d;
+    Document e;
     Folder folder;
+
+    Actor jim, bruce, lee, stan;
+    Knows knowsJB;
+    Knows knowsLS;
+    Knows knowsJL;
 
     EventListenerTest eventListenerTest;
 
@@ -32,21 +40,23 @@ public class EventTest {
     public void init() throws IOException {
         // each test should instantiate a new one
         eventListenerTest = null;
-        SessionFactory sessionFactory = new SessionFactory("org.neo4j.ogm.domain.filesystem");
+        SessionFactory sessionFactory = new SessionFactory("org.neo4j.ogm.domain.filesystem", "org.neo4j.ogm.domain.cineasts.annotated");
         session = sessionFactory.openSession();
-        session.purgeDatabase();
+        //session.purgeDatabase();
         a = new Document();
         a.setName("a");
 
         b = new Document();
         b.setName("b");
 
-        // will this be included in the EntityGraphMapper? it has no relationship to folder f
         c = new Document();
         c.setName("c");
 
         d = new Document();
         d.setName("d");
+
+        e = new Document();
+        e.setName("e");
 
         folder = new Folder();
         folder.setName("folder");
@@ -60,6 +70,37 @@ public class EventTest {
         c.setFolder(folder);
 
         session.save(folder);
+        session.save(d);
+        session.save(e);
+
+        jim = new Actor("Jim");
+        bruce = new Actor("Bruce");
+        lee = new Actor("Lee");
+        stan = new Actor("Stan");
+
+        knowsJB = new Knows();
+        knowsJB.setFirstActor(jim);
+        knowsJB.setSecondActor(bruce);
+        knowsJB.setSince(new Date());
+
+        jim.getKnows().add(knowsJB);
+        session.save(jim);
+
+        knowsLS = new Knows();
+        knowsLS.setFirstActor(lee);
+        knowsLS.setSecondActor(stan);
+        knowsLS.setSince(new Date());
+
+        lee.getKnows().add(knowsLS);
+        session.save(lee);
+
+        knowsJL = new Knows();
+        knowsJL.setFirstActor(jim);
+        knowsJL.setSecondActor(lee);
+
+        // made a logical error on this, somehow -- it made knowsJB non-existant
+        lee.getKnows().add(knowsJL);
+        session.save(lee);
     }
 
     // TODO: write tests to assert that the objects retrieved from the context are the expected ones
@@ -90,7 +131,7 @@ public class EventTest {
         expectedObjectTypes[1] = Document.class;
 
         testExpectedNumberOfEventsInQueue(eventListenerTest,2);
-        testExpectedSequenceTargetObjectTypes(eventListenerTest, expectedObjectTypes);
+        //testExpectedSequenceTargetObjectTypes(eventListenerTest, expectedObjectTypes);
     }
 
     @Test
@@ -115,7 +156,12 @@ public class EventTest {
             expectedObjectTypes[i] = Document.class;
 
         testExpectedNumberOfEventsInQueue(eventListenerTest,6);
-        testExpectedSequenceTargetObjectTypes(eventListenerTest, expectedObjectTypes);
+        //testExpectedSequenceTargetObjectTypes(eventListenerTest, expectedObjectTypes);
+    }
+
+    @Test
+    public void testAddMultipleNodesAsList() {
+
     }
 
     @Test
@@ -140,7 +186,7 @@ public class EventTest {
             expectedObjectTypes[i] = Document.class;
 
         testExpectedNumberOfEventsInQueue(eventListenerTest,6);
-        testExpectedSequenceTargetObjectTypes(eventListenerTest, expectedObjectTypes);
+        //testExpectedSequenceTargetObjectTypes(eventListenerTest, expectedObjectTypes);
     }
 
     @Test
@@ -170,7 +216,7 @@ public class EventTest {
             expectedObjectTypes[i] = Document.class;
 
         testExpectedNumberOfEventsInQueue(eventListenerTest,8);
-        testExpectedSequenceTargetObjectTypes(eventListenerTest, expectedObjectTypes);
+        //testExpectedSequenceTargetObjectTypes(eventListenerTest, expectedObjectTypes);
     }
 
     @Test
@@ -199,15 +245,35 @@ public class EventTest {
             expectedObjectTypes[i] = Document.class;
 
         testExpectedNumberOfEventsInQueue(eventListenerTest,8);
-        testExpectedSequenceTargetObjectTypes(eventListenerTest, expectedObjectTypes);
+        //testExpectedSequenceTargetObjectTypes(eventListenerTest, expectedObjectTypes);
+    }
+
+    @Test
+    public void testAddAndAlterMultipleConnectedNodes() {
+        int expectedNumberOfEvents = 6;
+        eventListenerTest = new EventListenerTest(expectedNumberOfEvents);
+        session.register(eventListenerTest);
+
+        // the node is connected, the connected nodes are dirty, so additional events should fire
+        a.setName("newA");
+        b.setName("newB");
+        c.setName("newC");
+        session.save(a);
+
+        Class[] expectedObjectTypes = new Class[expectedNumberOfEvents];
+        for(int i=0;i<expectedNumberOfEvents;i++)
+            expectedObjectTypes[i] = Document.class;
+
+        testExpectedNumberOfEventsInQueue(eventListenerTest,expectedNumberOfEvents);
+        //testExpectedSequenceTargetObjectTypes(eventListenerTest, expectedObjectTypes);
     }
 
     @Test
     public void testAddAndAlterMultipleConnectedNode() {
-        int noOfExpectedEvents = 6;
+        int noOfExpectedEvents = 12;
         eventListenerTest = new EventListenerTest(noOfExpectedEvents);
         session.register(eventListenerTest);
-        /* debugging, turn these back on
+
         Document e = new Document();
         e.setName("newE");
         session.save(e);
@@ -219,7 +285,7 @@ public class EventTest {
         Document g = new Document();
         g.setName("newG");
         session.save(g);
-        */
+
         // even though the node is connected, the connected nodes are not dirty, so the context registry should only contain 1 node at a time
         a.setName("newA");
         session.save(a);
@@ -235,36 +301,175 @@ public class EventTest {
             expectedObjectTypes[i] = Document.class;
 
         testExpectedNumberOfEventsInQueue(eventListenerTest,noOfExpectedEvents);
-        testExpectedSequenceTargetObjectTypes(eventListenerTest, expectedObjectTypes);
+        //testExpectedSequenceTargetObjectTypes(eventListenerTest, expectedObjectTypes);
     }
 
     @Test
-    public void testAddOneRelationship() {
-        eventListenerTest = new EventListenerTest(1);
+    public void testAddOneNewRelationship() {
+        int noOfExpectedEvents = 2;
+        eventListenerTest = new EventListenerTest(noOfExpectedEvents);
         session.register(eventListenerTest);
 
-        // c did not have a folder assigned in the init()
-        c.setFolder(folder);
-        session.save(c);
+        // shouldn't this fire events for both the Document and the Folder ?!?
+        d.setFolder(folder);
+        session.save(d);
 
-        // a SaveEvent with a TransientRelationship is expected inside
-        Event capturedEvent = eventListenerTest.eventsCaptured[0];
-        //assertNotNull(capturedEvent);
-        //assertTrue(capturedEvent instanceof SaveEvent);
+        testExpectedNumberOfEventsInQueue(eventListenerTest,noOfExpectedEvents);
+        //testExpectedSequenceTargetObjectTypes(eventListenerTest, expectedObjectTypes);
     }
 
     @Test
-    public void testAddMultipleRelationships() {
+    public void testAddNewRelationships() {
+        int noOfExpectedEvents = 4;
+        eventListenerTest = new EventListenerTest(noOfExpectedEvents);
+        session.register(eventListenerTest);
+
+        d.setFolder(folder);
+        session.save(d);
+
+        e.setFolder(folder);
+        session.save(e);
+
+        testExpectedNumberOfEventsInQueue(eventListenerTest,noOfExpectedEvents);
+    }
+
+    @Test
+    public void testAddOneRelationshipEntity() {
 
     }
 
     @Test
-    public void testAlterOneRelationship() {
+    public void testAlterOneRelationshipEntity() {
+        // when altering a relationship, the relationship is first deleted, and then added. every relationship altered triggers 2 events(TransientRelationship and RelationshipEntity)
+        int noOfExpectedEvents = 4;
+        eventListenerTest = new EventListenerTest(noOfExpectedEvents);
+        session.register(eventListenerTest);
 
+        // i need a random date here, otherwise it will not be counted as dirty
+        Random r = new Random();
+        knowsJB.setSince(new Date((long) (1293861599+ r.nextDouble()*60*60*24*365)));
+        session.save(knowsJB);
+
+        testExpectedNumberOfEventsInQueue(eventListenerTest,noOfExpectedEvents);
     }
 
     @Test
-    public void testAlterMultipleRelationships() {
+    public void testAlterMultipleRelationshipEntitiesWhoseObjectsAreNotConnected() {
+        int noOfExpectedEvents = 800;
+        eventListenerTest = new EventListenerTest(noOfExpectedEvents);
+        session.register(eventListenerTest);
+
+        knowsJB.setSince(new Date(System.nanoTime()));
+        session.save(knowsJB);
+
+        knowsLS.setSince(new Date(System.nanoTime()));
+        session.save(knowsLS);
+
+        //testExpectedNumberOfEventsInQueue(eventListenerTest,noOfExpectedEvents);
+    }
+
+    @Test
+    public void testAlterMultipleRelationshipEntitiesWhoseObjectsAreConnected() {
+        int noOfExpectedEvents = 4;
+        eventListenerTest = new EventListenerTest(noOfExpectedEvents);
+        session.register(eventListenerTest);
+
+        knowsJL.setSince(new Date(System.nanoTime()));
+        session.save(knowsJL);
+
+        testExpectedNumberOfEventsInQueue(eventListenerTest,noOfExpectedEvents);
+    }
+
+    @Test
+    public void deleteOneUnconnectedNode() {
+        int noOfExpectedEvents = 2;
+        eventListenerTest = new EventListenerTest(noOfExpectedEvents);
+        session.register(eventListenerTest);
+
+        session.delete(d);
+
+        testExpectedNumberOfEventsInQueue(eventListenerTest,noOfExpectedEvents);
+    }
+
+    @Test
+    public void deleteOneConnectedNode() {
+        int noOfExpectedEvents = 2;
+        eventListenerTest = new EventListenerTest(noOfExpectedEvents);
+        session.register(eventListenerTest);
+
+        session.delete(a);
+
+        testExpectedNumberOfEventsInQueue(eventListenerTest,noOfExpectedEvents);
+    }
+
+    // no events should fire
+    @Test
+    public void testDeleteUnpersistedEntity() {
+        Document unpersistedDocument = new Document();
+        int noOfExpectedEvents = 0;
+        eventListenerTest = new EventListenerTest(noOfExpectedEvents);
+        session.register(eventListenerTest);
+        session.delete(unpersistedDocument);
+        testExpectedNumberOfEventsInQueue(eventListenerTest,noOfExpectedEvents);
+    }
+
+    @Test
+    public void deleteOneRelationship() {
+        int noOfExpectedEvents = 2;
+        eventListenerTest = new EventListenerTest(noOfExpectedEvents);
+        session.register(eventListenerTest);
+
+        session.delete(knowsJL);
+
+        testExpectedNumberOfEventsInQueue(eventListenerTest,noOfExpectedEvents);
+    }
+
+    @Test
+    public void deleteMultipleRelationships() {
+        int noOfExpectedEvents = 4;
+        eventListenerTest = new EventListenerTest(noOfExpectedEvents);
+        session.register(eventListenerTest);
+
+        session.delete(knowsJL);
+        session.delete(knowsJB);
+
+        testExpectedNumberOfEventsInQueue(eventListenerTest,noOfExpectedEvents);
+    }
+
+    // session.save(<? implements Collection>);
+    @Test
+    public void saveMultipleNewNodes() {
+        int noOfExpectedEvents = 2;
+        eventListenerTest = new EventListenerTest(noOfExpectedEvents);
+        session.register(eventListenerTest);
+
+        a.setName("newA");
+        b.setName("newB");
+        c.setName("newC");
+        List<Object> saveList = new LinkedList<>();
+        saveList.add(a);saveList.add(b);saveList.add(c);
+
+        session.save(saveList);
+
+        testExpectedNumberOfEventsInQueue(eventListenerTest,noOfExpectedEvents);
+    }
+
+    @Test
+    public void deleteMultipleNodes() {
+        int noOfExpectedEvents = 6;
+        eventListenerTest = new EventListenerTest(noOfExpectedEvents);
+        session.register(eventListenerTest);
+
+        List<Object> saveList = new LinkedList<>();
+        saveList.add(a);saveList.add(b);saveList.add(c);
+
+        session.delete(saveList);
+
+        testExpectedNumberOfEventsInQueue(eventListenerTest,noOfExpectedEvents);
+    }
+
+    @Test
+    public void deleteAllOfType() {
 
     }
 
@@ -314,16 +519,21 @@ public class EventTest {
     private void testExpectedSequenceTargetObjectTypes(EventListenerTest eventListener, Class[] types) {
         testExpectedNumberOfEventsInQueue(eventListener, types.length);
         for(int i=0;i<eventListener.eventsCaptured.length;i++)
-            assertTrue(types[i].isInstance(eventListener.eventsCaptured[i].getTargetObject()));
+            assertTrue(types[i].isInstance(eventListener.eventsCaptured[i].getTargetObjects()));
     }
 
+    private void testCountOfExpectedTargetObjects(EventListenerTest eventListener, TargetObjectCount[] targetObjectCountArray) {
+
+    }
+    /*
     private void testCountOfExpectedTargetObjects(EventListenerTest eventListener, TargetObjectCount[] targetObjectCountArray) {
         Class currentClass = null;
         for(int i=0;i<targetObjectCountArray.length;i++) {
             assertContainsObjects(eventListener,targetObjectCountArray[i]);
         }
     }
-
+    */
+    /*
     private void assertContainsObjects(EventListenerTest eventListener, TargetObjectCount targetObjectCountArray) {
         int numberOfObjectsOfTypeFound = 0;
         for(int i=0;i<eventListener.eventsCaptured.length;i++) {
@@ -332,7 +542,7 @@ public class EventTest {
         }
         assertTrue(numberOfObjectsOfTypeFound == targetObjectCountArray.count);
     }
-
+    */
     class TargetObjectCount {
         public Class targetObjectType;
         public int count;

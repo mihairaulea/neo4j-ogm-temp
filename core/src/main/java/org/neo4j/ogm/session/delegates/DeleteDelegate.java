@@ -12,6 +12,7 @@
  */
 package org.neo4j.ogm.session.delegates;
 
+import org.neo4j.ogm.compiler.CompileContext;
 import org.neo4j.ogm.model.RowModel;
 import org.neo4j.ogm.request.RowModelRequest;
 import org.neo4j.ogm.request.Statement;
@@ -22,12 +23,15 @@ import org.neo4j.ogm.metadata.ClassInfo;
 import org.neo4j.ogm.session.Capability;
 import org.neo4j.ogm.session.Neo4jSession;
 import org.neo4j.ogm.session.event.DeleteEvent;
+import org.neo4j.ogm.session.event.SaveEvent;
 import org.neo4j.ogm.session.request.strategy.DeleteNodeStatements;
 import org.neo4j.ogm.session.request.strategy.DeleteRelationshipStatements;
 import org.neo4j.ogm.session.request.strategy.DeleteStatements;
 
 import java.lang.reflect.Field;
 import java.util.Arrays;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -73,8 +77,10 @@ public class DeleteDelegate implements Capability.Delete {
                 if (identity != null) {
                     Statement request = getDeleteStatementsBasedOnType(object.getClass()).delete(identity);
                     RowModelRequest query = new DefaultRowModelRequest(request.getStatement(), request.getParameters());
+                    notifyDelete(object, DeleteEvent.PRE);
                     try (Response<RowModel> response = session.requestHandler().execute(query)) {
                         session.context().clear(object);
+                        notifyDelete(object, DeleteEvent.POST);
                     }
                 }
             } else {
@@ -89,8 +95,10 @@ public class DeleteDelegate implements Capability.Delete {
         if (classInfo != null) {
             Statement request = getDeleteStatementsBasedOnType(type).deleteByType(session.entityType(classInfo.name()));
             RowModelRequest query = new DefaultRowModelRequest(request.getStatement(), request.getParameters());
+            notifyDelete(type,DeleteEvent.PRE);
             try (Response<RowModel> response = session.requestHandler().execute(query)) {
                 session.context().clear(type);
+                notifyDelete(type,DeleteEvent.POST);
             }
         } else {
             session.warn(type.getName() + " is not a persistable class");
@@ -104,6 +112,16 @@ public class DeleteDelegate implements Capability.Delete {
         RowModelRequest query = new DefaultRowModelRequest(stmt.getStatement(), stmt.getParameters());
         session.requestHandler().execute(query).close();
         session.context().clear();
+    }
+
+
+    private void notifyDelete(Object affectedObject, String lifecycle) {
+        DeleteEvent deleteEvent = new DeleteEvent();
+        deleteEvent.LIFECYCLE = lifecycle;
+        List<Object> objectList = new LinkedList<>();
+        objectList.add(affectedObject);
+        deleteEvent.affectedObjects = objectList;
+        session.notifyListeners(deleteEvent);
     }
 
     @Override

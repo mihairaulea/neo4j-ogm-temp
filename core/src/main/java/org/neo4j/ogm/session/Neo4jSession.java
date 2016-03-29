@@ -380,7 +380,6 @@ public class Neo4jSession implements Session {
     */
     @Override
     public <T> void save(T object) {
-        System.out.println("Save :"+object.toString());
         saveDelegate.save(object);
     }
 

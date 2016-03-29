@@ -153,6 +153,9 @@ public class RequestExecutor {
 				createNodesRowRequest.setStatements(compiler.createNodesStatements());
 				try (Response<RowModel> response = session.requestHandler().execute(createNodesRowRequest)) {
 					registerNewEntityIds(context, response, entityReferenceMappings);
+					if(compiler.updateNodesStatements().size()>0) {
+						updateSessionContext(context);
+					}
 				}
 				statements.addAll(compiler.createRelationshipsStatements());
 				statements.addAll(compiler.updateNodesStatements());

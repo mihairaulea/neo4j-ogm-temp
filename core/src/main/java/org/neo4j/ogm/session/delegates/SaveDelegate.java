@@ -13,10 +13,7 @@
 package org.neo4j.ogm.session.delegates;
 
 import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 import org.neo4j.ogm.compiler.CompileContext;
 import org.neo4j.ogm.context.EntityGraphMapper;
@@ -61,15 +58,15 @@ public class SaveDelegate implements Capability.Save {
             }
             List<CompileContext> contexts = new ArrayList<>();
             for (Object element : objects) {
-                System.out.println(element);
                 contexts.add(new EntityGraphMapper(session.metaData(), session.context()).map(element, depth));
             }
+            notifySave(contexts, SaveEvent.PRE);
             requestExecutor.executeSave(contexts);
+            notifySave(contexts, SaveEvent.POST);
         }
         else {
             ClassInfo classInfo = session.metaData().classInfo(object);
             if (classInfo != null) {
-                session.context();
                 CompileContext context = new EntityGraphMapper(session.metaData(), session.context()).map(object, depth);
                 notifySave(context, SaveEvent.PRE);
                 requestExecutor.executeSave(context);
@@ -78,6 +75,25 @@ public class SaveDelegate implements Capability.Save {
                 session.warn(object.getClass().getName() + " is not an instance of a persistable class");
             }
         }
+    }
+
+
+    private void notifySave(List<CompileContext> contexts, String lifecycle) {
+        SaveEvent saveEvent = new SaveEvent();
+        saveEvent.affectedObjects = new LinkedList<>();
+        Iterator<CompileContext> compileContextIterator = contexts.iterator();
+        while(compileContextIterator.hasNext()) {
+        CompileContext context = compileContextIterator.next();
+        Iterator<Object> affectedObjectsIterator = context.registry().iterator();
+        while(affectedObjectsIterator.hasNext()) {
+            saveEvent.LIFECYCLE = lifecycle;
+            // should i do something, if it is a TransientRelationship ?
+            Object affectedObject = affectedObjectsIterator.next();
+            ClassInfo classInfo = this.session.metaData().classInfo(affectedObject) ;//metaData.classInfo(entity);
+            if(!saveEvent.affectedObjects.contains(affectedObject)) saveEvent.affectedObjects.add(affectedObject);
+        }
+        }
+        session.notifyListeners(saveEvent);
     }
 
     private void notifySave(CompileContext context, String lifecycle) {
@@ -89,7 +105,9 @@ public class SaveDelegate implements Capability.Save {
             Object affectedObject = affectedObjectsIterator.next();
             ClassInfo classInfo = this.session.metaData().classInfo(affectedObject) ;//metaData.classInfo(entity);
             // TransientRelationship does not have ClassInfo
-            saveEvent.affectedObject = affectedObject;
+            List<Object> objects = new LinkedList<>();
+            objects.add(affectedObject);
+            saveEvent.affectedObjects = objects;
             session.notifyListeners(saveEvent);
         }
     }
