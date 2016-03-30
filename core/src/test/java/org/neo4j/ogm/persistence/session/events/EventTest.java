@@ -1,6 +1,7 @@
 package org.neo4j.ogm.persistence.session.events;
 
 import org.junit.*;
+import org.neo4j.ogm.context.TransientRelationship;
 import org.neo4j.ogm.domain.cineasts.annotated.Actor;
 import org.neo4j.ogm.domain.cineasts.annotated.Knows;
 import org.neo4j.ogm.domain.filesystem.Document;
@@ -103,7 +104,6 @@ public class EventTest extends MultiDriverTestClass {
         session.save(lee);
     }
 
-    // TODO: write tests to assert that the objects retrieved from the context are the expected ones
     @Test
     public void noEventsShouldFire() {
         this.eventListenerTest = new EventListenerTest(0);
@@ -126,12 +126,14 @@ public class EventTest extends MultiDriverTestClass {
 
         session.save(e);
 
-        Class[] expectedObjectTypes = new Class[2];
-        expectedObjectTypes[0] = Document.class;
-        expectedObjectTypes[1] = Document.class;
+        TargetObjectCount[] targetObjectCounts = new TargetObjectCount[1];
+        TargetObjectCount targetObjectCount = new TargetObjectCount();
+        targetObjectCount.count = 2;
+        targetObjectCount.targetObjectType = Document.class;
+        targetObjectCounts[0] = targetObjectCount;
 
         testExpectedNumberOfEventsInQueue(eventListenerTest,2);
-        //testExpectedSequenceTargetObjectTypes(eventListenerTest, expectedObjectTypes);
+        testCountOfExpectedTargetObjects(eventListenerTest, targetObjectCounts);
     }
 
     @Test
@@ -151,17 +153,14 @@ public class EventTest extends MultiDriverTestClass {
         g.setName("g");
         session.save(g);
 
-        Class[] expectedObjectTypes = new Class[6];
-        for(int i=0;i<6;i++)
-            expectedObjectTypes[i] = Document.class;
+        TargetObjectCount[] targetObjectCounts = new TargetObjectCount[1];
+        TargetObjectCount targetObjectCount = new TargetObjectCount();
+        targetObjectCount.count = 6;
+        targetObjectCount.targetObjectType = Document.class;
+        targetObjectCounts[0] = targetObjectCount;
 
         testExpectedNumberOfEventsInQueue(eventListenerTest,6);
-        //testExpectedSequenceTargetObjectTypes(eventListenerTest, expectedObjectTypes);
-    }
-
-    @Test
-    public void testAddMultipleNodesAsList() {
-
+        testCountOfExpectedTargetObjects(eventListenerTest, targetObjectCounts);
     }
 
     @Test
@@ -181,12 +180,14 @@ public class EventTest extends MultiDriverTestClass {
         g.setName("newG");
         session.save(g);
 
-        Class[] expectedObjectTypes = new Class[6];
-        for(int i=0;i<6;i++)
-            expectedObjectTypes[i] = Document.class;
+        TargetObjectCount[] targetObjectCounts = new TargetObjectCount[1];
+        TargetObjectCount targetObjectCount = new TargetObjectCount();
+        targetObjectCount.count = 6;
+        targetObjectCount.targetObjectType = Document.class;
+        targetObjectCounts[0] = targetObjectCount;
 
         testExpectedNumberOfEventsInQueue(eventListenerTest,6);
-        //testExpectedSequenceTargetObjectTypes(eventListenerTest, expectedObjectTypes);
+        testCountOfExpectedTargetObjects(eventListenerTest, targetObjectCounts);
     }
 
     @Test
@@ -211,12 +212,14 @@ public class EventTest extends MultiDriverTestClass {
         d.setName("newD");
         session.save(d);
 
-        Class[] expectedObjectTypes = new Class[8];
-        for(int i=0;i<8;i++)
-            expectedObjectTypes[i] = Document.class;
+        TargetObjectCount[] targetObjectCounts = new TargetObjectCount[1];
+        TargetObjectCount targetObjectCount = new TargetObjectCount();
+        targetObjectCount.count = 6;
+        targetObjectCount.targetObjectType = Document.class;
+        targetObjectCounts[0] = targetObjectCount;
 
         testExpectedNumberOfEventsInQueue(eventListenerTest,8);
-        //testExpectedSequenceTargetObjectTypes(eventListenerTest, expectedObjectTypes);
+        testCountOfExpectedTargetObjects(eventListenerTest, targetObjectCounts);
     }
 
     @Test
@@ -240,12 +243,14 @@ public class EventTest extends MultiDriverTestClass {
         a.setName("newA");
         session.save(a);
 
-        Class[] expectedObjectTypes = new Class[8];
-        for(int i=0;i<8;i++)
-            expectedObjectTypes[i] = Document.class;
+        TargetObjectCount[] targetObjectCounts = new TargetObjectCount[1];
+        TargetObjectCount targetObjectCount = new TargetObjectCount();
+        targetObjectCount.count = 8;
+        targetObjectCount.targetObjectType = Document.class;
+        targetObjectCounts[0] = targetObjectCount;
 
         testExpectedNumberOfEventsInQueue(eventListenerTest,8);
-        //testExpectedSequenceTargetObjectTypes(eventListenerTest, expectedObjectTypes);
+        testCountOfExpectedTargetObjects(eventListenerTest, targetObjectCounts);
     }
 
     @Test
@@ -260,12 +265,14 @@ public class EventTest extends MultiDriverTestClass {
         c.setName("newC");
         session.save(a);
 
-        Class[] expectedObjectTypes = new Class[expectedNumberOfEvents];
-        for(int i=0;i<expectedNumberOfEvents;i++)
-            expectedObjectTypes[i] = Document.class;
+        TargetObjectCount[] targetObjectCounts = new TargetObjectCount[1];
+        TargetObjectCount targetObjectCount = new TargetObjectCount();
+        targetObjectCount.count = 6;
+        targetObjectCount.targetObjectType = Document.class;
+        targetObjectCounts[0] = targetObjectCount;
 
         testExpectedNumberOfEventsInQueue(eventListenerTest,expectedNumberOfEvents);
-        //testExpectedSequenceTargetObjectTypes(eventListenerTest, expectedObjectTypes);
+        testCountOfExpectedTargetObjects(eventListenerTest, targetObjectCounts);
     }
 
     @Test
@@ -296,12 +303,14 @@ public class EventTest extends MultiDriverTestClass {
         c.setName("newC");
         session.save(c);
 
-        Class[] expectedObjectTypes = new Class[noOfExpectedEvents];
-        for(int i=0;i<noOfExpectedEvents;i++)
-            expectedObjectTypes[i] = Document.class;
+        TargetObjectCount[] targetObjectCounts = new TargetObjectCount[1];
+        TargetObjectCount targetObjectCount = new TargetObjectCount();
+        targetObjectCount.count = 12;
+        targetObjectCount.targetObjectType = Document.class;
+        targetObjectCounts[0] = targetObjectCount;
 
         testExpectedNumberOfEventsInQueue(eventListenerTest,noOfExpectedEvents);
-        //testExpectedSequenceTargetObjectTypes(eventListenerTest, expectedObjectTypes);
+        testCountOfExpectedTargetObjects(eventListenerTest, targetObjectCounts);
     }
 
     @Test
@@ -314,8 +323,15 @@ public class EventTest extends MultiDriverTestClass {
         d.setFolder(folder);
         session.save(d);
 
+        TargetObjectCount[] targetObjectCounts = new TargetObjectCount[1];
+        TargetObjectCount targetObjectCount = new TargetObjectCount();
+        targetObjectCount.count = 1;
+        targetObjectCount.targetObjectType = TransientRelationship.class;
+        targetObjectCounts[0] = targetObjectCount;
+
+
         testExpectedNumberOfEventsInQueue(eventListenerTest,noOfExpectedEvents);
-        //testExpectedSequenceTargetObjectTypes(eventListenerTest, expectedObjectTypes);
+        testCountOfExpectedTargetObjects(eventListenerTest, targetObjectCounts);
     }
 
     @Test
@@ -330,12 +346,14 @@ public class EventTest extends MultiDriverTestClass {
         e.setFolder(folder);
         session.save(e);
 
+        TargetObjectCount[] targetObjectCounts = new TargetObjectCount[1];
+        TargetObjectCount targetObjectCount = new TargetObjectCount();
+        targetObjectCount.count = 4;
+        targetObjectCount.targetObjectType = TransientRelationship.class;
+        targetObjectCounts[0] = targetObjectCount;
+
         testExpectedNumberOfEventsInQueue(eventListenerTest,noOfExpectedEvents);
-    }
-
-    @Test
-    public void testAddOneRelationshipEntity() {
-
+        testCountOfExpectedTargetObjects(eventListenerTest, targetObjectCounts);
     }
 
     @Test
@@ -350,22 +368,46 @@ public class EventTest extends MultiDriverTestClass {
         knowsJB.setSince(new Date((long) (1293861599+ r.nextDouble()*60*60*24*365)));
         session.save(knowsJB);
 
+        TargetObjectCount[] targetObjectCounts = new TargetObjectCount[2];
+        TargetObjectCount targetObjectCount = new TargetObjectCount();
+        targetObjectCount.count = 2;
+        targetObjectCount.targetObjectType = TransientRelationship.class;
+        targetObjectCounts[0] = targetObjectCount;
+
+        TargetObjectCount targetObjectCount2 = new TargetObjectCount();
+        targetObjectCount2.count = 2;
+        targetObjectCount2.targetObjectType = Knows.class;
+        targetObjectCounts[1] = targetObjectCount2;
+
         testExpectedNumberOfEventsInQueue(eventListenerTest,noOfExpectedEvents);
+        testCountOfExpectedTargetObjects(eventListenerTest, targetObjectCounts);
     }
 
     @Test
     public void testAlterMultipleRelationshipEntitiesWhoseObjectsAreNotConnected() {
-        int noOfExpectedEvents = 800;
+        int noOfExpectedEvents = 14;
         eventListenerTest = new EventListenerTest(noOfExpectedEvents);
         session.register(eventListenerTest);
-
-        knowsJB.setSince(new Date(System.nanoTime()));
+        Random r = new Random();
+        knowsJB.setSince(new Date((long) (1293861599+ r.nextDouble()*60*60*24*365)));
         session.save(knowsJB);
 
-        knowsLS.setSince(new Date(System.nanoTime()));
+        knowsLS.setSince(new Date((long) (1293861599+ r.nextDouble()*60*60*24*365)));
         session.save(knowsLS);
 
-        //testExpectedNumberOfEventsInQueue(eventListenerTest,noOfExpectedEvents);
+        TargetObjectCount[] targetObjectCounts = new TargetObjectCount[2];
+        TargetObjectCount targetObjectCount = new TargetObjectCount();
+        targetObjectCount.count = 8;
+        targetObjectCount.targetObjectType = TransientRelationship.class;
+        targetObjectCounts[0] = targetObjectCount;
+
+        TargetObjectCount targetObjectCount2 = new TargetObjectCount();
+        targetObjectCount2.count = 6;
+        targetObjectCount2.targetObjectType = Knows.class;
+        targetObjectCounts[1] = targetObjectCount2;
+
+        testExpectedNumberOfEventsInQueue(eventListenerTest,noOfExpectedEvents);
+        testCountOfExpectedTargetObjects(eventListenerTest, targetObjectCounts);
     }
 
     @Test
@@ -373,11 +415,23 @@ public class EventTest extends MultiDriverTestClass {
         int noOfExpectedEvents = 4;
         eventListenerTest = new EventListenerTest(noOfExpectedEvents);
         session.register(eventListenerTest);
-
-        knowsJL.setSince(new Date(System.nanoTime()));
+        Random r = new Random();
+        knowsJL.setSince((new Date((long) (1293861599+ r.nextDouble()*60*60*24*365))));
         session.save(knowsJL);
 
+        TargetObjectCount[] targetObjectCounts = new TargetObjectCount[2];
+        TargetObjectCount targetObjectCount = new TargetObjectCount();
+        targetObjectCount.count = 2;
+        targetObjectCount.targetObjectType = TransientRelationship.class;
+        targetObjectCounts[0] = targetObjectCount;
+
+        TargetObjectCount targetObjectCount2 = new TargetObjectCount();
+        targetObjectCount2.count = 2;
+        targetObjectCount2.targetObjectType = Knows.class;
+        targetObjectCounts[1] = targetObjectCount2;
+
         testExpectedNumberOfEventsInQueue(eventListenerTest,noOfExpectedEvents);
+        testCountOfExpectedTargetObjects(eventListenerTest,targetObjectCounts);
     }
 
     @Test
@@ -388,7 +442,14 @@ public class EventTest extends MultiDriverTestClass {
 
         session.delete(d);
 
+        TargetObjectCount[] targetObjectCounts = new TargetObjectCount[1];
+        TargetObjectCount targetObjectCount = new TargetObjectCount();
+        targetObjectCount.count = 2;
+        targetObjectCount.targetObjectType = Document.class;
+        targetObjectCounts[0] = targetObjectCount;
+
         testExpectedNumberOfEventsInQueue(eventListenerTest,noOfExpectedEvents);
+        testCountOfExpectedTargetObjects(eventListenerTest,targetObjectCounts);
     }
 
     @Test
@@ -399,7 +460,14 @@ public class EventTest extends MultiDriverTestClass {
 
         session.delete(a);
 
+        TargetObjectCount[] targetObjectCounts = new TargetObjectCount[1];
+        TargetObjectCount targetObjectCount = new TargetObjectCount();
+        targetObjectCount.count = 2;
+        targetObjectCount.targetObjectType = Document.class;
+        targetObjectCounts[0] = targetObjectCount;
+
         testExpectedNumberOfEventsInQueue(eventListenerTest,noOfExpectedEvents);
+        testCountOfExpectedTargetObjects(eventListenerTest,targetObjectCounts);
     }
 
     // no events should fire
@@ -421,7 +489,14 @@ public class EventTest extends MultiDriverTestClass {
 
         session.delete(knowsJL);
 
+        TargetObjectCount[] targetObjectCounts = new TargetObjectCount[1];
+        TargetObjectCount targetObjectCount = new TargetObjectCount();
+        targetObjectCount.count = 2;
+        targetObjectCount.targetObjectType = Knows.class;
+        targetObjectCounts[0] = targetObjectCount;
+
         testExpectedNumberOfEventsInQueue(eventListenerTest,noOfExpectedEvents);
+        testCountOfExpectedTargetObjects(eventListenerTest, targetObjectCounts);
     }
 
     @Test
@@ -433,7 +508,14 @@ public class EventTest extends MultiDriverTestClass {
         session.delete(knowsJL);
         session.delete(knowsJB);
 
+        TargetObjectCount[] targetObjectCounts = new TargetObjectCount[1];
+        TargetObjectCount targetObjectCount = new TargetObjectCount();
+        targetObjectCount.count = 4;
+        targetObjectCount.targetObjectType = Knows.class;
+        targetObjectCounts[0] = targetObjectCount;
+
         testExpectedNumberOfEventsInQueue(eventListenerTest,noOfExpectedEvents);
+        testCountOfExpectedTargetObjects(eventListenerTest, targetObjectCounts);
     }
 
     // session.save(<? implements Collection>);
@@ -451,7 +533,15 @@ public class EventTest extends MultiDriverTestClass {
 
         session.save(saveList);
 
+        TargetObjectCount[] targetObjectCounts = new TargetObjectCount[1];
+        TargetObjectCount targetObjectCount = new TargetObjectCount();
+        // the method looks inside the list of objects in the event; actually, only 2 events are thrown
+        targetObjectCount.count = 6;
+        targetObjectCount.targetObjectType = Document.class;
+        targetObjectCounts[0] = targetObjectCount;
+
         testExpectedNumberOfEventsInQueue(eventListenerTest,noOfExpectedEvents);
+        testCountOfExpectedTargetObjects(eventListenerTest, targetObjectCounts);
     }
 
     @Test
@@ -465,12 +555,32 @@ public class EventTest extends MultiDriverTestClass {
 
         session.delete(saveList);
 
+        TargetObjectCount[] targetObjectCounts = new TargetObjectCount[1];
+        TargetObjectCount targetObjectCount = new TargetObjectCount();
+        targetObjectCount.count = 6;
+        targetObjectCount.targetObjectType = Document.class;
+        targetObjectCounts[0] = targetObjectCount;
+
         testExpectedNumberOfEventsInQueue(eventListenerTest,noOfExpectedEvents);
+        testCountOfExpectedTargetObjects(eventListenerTest, targetObjectCounts);
     }
 
     @Test
     public void deleteAllOfType() {
+        int noOfExpectedEvents = 2;
+        eventListenerTest = new EventListenerTest(noOfExpectedEvents);
+        session.register(eventListenerTest);
 
+        session.deleteAll(Document.class);
+
+        TargetObjectCount[] targetObjectCounts = new TargetObjectCount[1];
+        TargetObjectCount targetObjectCount = new TargetObjectCount();
+        targetObjectCount.count = 2;
+        targetObjectCount.targetObjectType = Class.class;
+        targetObjectCounts[0] = targetObjectCount;
+
+        testExpectedNumberOfEventsInQueue(eventListenerTest,noOfExpectedEvents);
+        testCountOfExpectedTargetObjects(eventListenerTest, targetObjectCounts);
     }
 
     class EventListenerTest implements EventListener {
@@ -515,34 +625,35 @@ public class EventTest extends MultiDriverTestClass {
         assertTrue(eventListener.currentIndex == noOfExpectedEvents);
     }
 
-    // this is not usable when related entities are saved, because the order could be arbitrary
-    private void testExpectedSequenceTargetObjectTypes(EventListenerTest eventListener, Class[] types) {
-        testExpectedNumberOfEventsInQueue(eventListener, types.length);
-        for(int i=0;i<eventListener.eventsCaptured.length;i++)
-            assertTrue(types[i].isInstance(eventListener.eventsCaptured[i].getTargetObjects()));
-    }
-
     private void testCountOfExpectedTargetObjects(EventListenerTest eventListener, TargetObjectCount[] targetObjectCountArray) {
-
-    }
-    /*
-    private void testCountOfExpectedTargetObjects(EventListenerTest eventListener, TargetObjectCount[] targetObjectCountArray) {
-        Class currentClass = null;
-        for(int i=0;i<targetObjectCountArray.length;i++) {
-            assertContainsObjects(eventListener,targetObjectCountArray[i]);
+        int noOfConsideredObjects = 0; int noOfCaughtObjects = 0;
+        for(TargetObjectCount targetObjectCount : targetObjectCountArray) {
+            int[] result = getConsideredObjectsAndCaughtObjects(eventListener, targetObjectCount);
+            noOfCaughtObjects += result[0];
+            noOfConsideredObjects = result[1];
         }
+        assertTrue(noOfCaughtObjects == noOfConsideredObjects);
     }
-    */
-    /*
-    private void assertContainsObjects(EventListenerTest eventListener, TargetObjectCount targetObjectCountArray) {
-        int numberOfObjectsOfTypeFound = 0;
+
+
+    private int[] getConsideredObjectsAndCaughtObjects(EventListenerTest eventListener, TargetObjectCount targetObjectCount) {
+        int noOfCaughtObjectsOfType = 0;
+        int noOfConsideredObjects = 0;
+        int[] result = new int[2];
         for(int i=0;i<eventListener.eventsCaptured.length;i++) {
-            if(targetObjectCountArray.targetObjectType.isInstance(eventListener.eventsCaptured[i].getTargetObject()))
-                numberOfObjectsOfTypeFound++;
+            List<Object> caughtObjectsInEvent = eventListener.eventsCaptured[i].getTargetObjects();
+            for(Object caughtObject : caughtObjectsInEvent) {
+                noOfConsideredObjects++;
+                if( targetObjectCount.targetObjectType.isInstance(caughtObject) ) {
+                    noOfCaughtObjectsOfType++;
+                }
+            }
         }
-        assertTrue(numberOfObjectsOfTypeFound == targetObjectCountArray.count);
+        result[0] = noOfCaughtObjectsOfType;
+        result[1] = noOfConsideredObjects;
+        return result;
     }
-    */
+
     class TargetObjectCount {
         public Class targetObjectType;
         public int count;
