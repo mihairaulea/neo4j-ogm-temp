@@ -275,6 +275,28 @@ public class EventTest extends MultiDriverTestClass {
         testCountOfExpectedTargetObjects(eventListenerTest, targetObjectCounts);
     }
 
+
+    @Test
+    public void testAddAndAlterSomeMultipleConnectedNodes() {
+        int expectedNumberOfEvents = 4;
+        eventListenerTest = new EventListenerTest(expectedNumberOfEvents);
+        session.register(eventListenerTest);
+
+        // the node is connected, the connected nodes are dirty, so additional events should fire
+        a.setName("newA");
+        c.setName("newC");
+        session.save(a);
+
+        TargetObjectCount[] targetObjectCounts = new TargetObjectCount[1];
+        TargetObjectCount targetObjectCount = new TargetObjectCount();
+        targetObjectCount.count = 4;
+        targetObjectCount.targetObjectType = Document.class;
+        targetObjectCounts[0] = targetObjectCount;
+
+        testExpectedNumberOfEventsInQueue(eventListenerTest,expectedNumberOfEvents);
+        testCountOfExpectedTargetObjects(eventListenerTest, targetObjectCounts);
+    }
+
     @Test
     public void testAddAndAlterMultipleConnectedNode() {
         int noOfExpectedEvents = 12;
@@ -521,7 +543,7 @@ public class EventTest extends MultiDriverTestClass {
     // session.save(<? implements Collection>);
     @Test
     public void saveMultipleNewNodes() {
-        int noOfExpectedEvents = 2;
+        int noOfExpectedEvents = 6;
         eventListenerTest = new EventListenerTest(noOfExpectedEvents);
         session.register(eventListenerTest);
 
@@ -641,13 +663,11 @@ public class EventTest extends MultiDriverTestClass {
         int noOfConsideredObjects = 0;
         int[] result = new int[2];
         for(int i=0;i<eventListener.eventsCaptured.length;i++) {
-            List<Object> caughtObjectsInEvent = eventListener.eventsCaptured[i].getTargetObjects();
-            for(Object caughtObject : caughtObjectsInEvent) {
+            Object caughtObject = eventListener.eventsCaptured[i].getTargetObject();
                 noOfConsideredObjects++;
                 if( targetObjectCount.targetObjectType.isInstance(caughtObject) ) {
                     noOfCaughtObjectsOfType++;
                 }
-            }
         }
         result[0] = noOfCaughtObjectsOfType;
         result[1] = noOfConsideredObjects;

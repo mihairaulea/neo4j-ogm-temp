@@ -7,6 +7,6 @@ import java.util.List;
  */
 public interface Event {
 
-    List<Object> getTargetObjects();
+    Object getTargetObject();
 
 }

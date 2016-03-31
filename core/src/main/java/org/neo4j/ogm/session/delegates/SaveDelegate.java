@@ -79,21 +79,25 @@ public class SaveDelegate implements Capability.Save {
 
 
     private void notifySave(List<CompileContext> contexts, String lifecycle) {
-        SaveEvent saveEvent = new SaveEvent();
-        saveEvent.affectedObjects = new LinkedList<>();
+        List<Object> affectedObjects = new LinkedList<>();
         Iterator<CompileContext> compileContextIterator = contexts.iterator();
         while(compileContextIterator.hasNext()) {
         CompileContext context = compileContextIterator.next();
         Iterator<Object> affectedObjectsIterator = context.registry().iterator();
         while(affectedObjectsIterator.hasNext()) {
-            saveEvent.LIFECYCLE = lifecycle;
             // should i do something, if it is a TransientRelationship ?
             Object affectedObject = affectedObjectsIterator.next();
             ClassInfo classInfo = this.session.metaData().classInfo(affectedObject) ;//metaData.classInfo(entity);
-            if(!saveEvent.affectedObjects.contains(affectedObject)) saveEvent.affectedObjects.add(affectedObject);
+            if(!affectedObjects.contains(affectedObject)) affectedObjects.add(affectedObject);
         }
         }
-        session.notifyListeners(saveEvent);
+        for(Object object : affectedObjects) {
+            SaveEvent saveEvent = new SaveEvent();
+            saveEvent.LIFECYCLE = lifecycle;
+            // should i do something, if it is a TransientRelationship ?
+            saveEvent.affectedObject = object;
+            session.notifyListeners(saveEvent);
+        }
     }
 
     private void notifySave(CompileContext context, String lifecycle) {
@@ -105,9 +109,7 @@ public class SaveDelegate implements Capability.Save {
             Object affectedObject = affectedObjectsIterator.next();
             ClassInfo classInfo = this.session.metaData().classInfo(affectedObject) ;//metaData.classInfo(entity);
             // TransientRelationship does not have ClassInfo
-            List<Object> objects = new LinkedList<>();
-            objects.add(affectedObject);
-            saveEvent.affectedObjects = objects;
+            saveEvent.affectedObject = affectedObject;
             session.notifyListeners(saveEvent);
         }
     }

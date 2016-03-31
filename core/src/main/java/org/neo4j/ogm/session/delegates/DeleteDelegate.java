@@ -118,9 +118,7 @@ public class DeleteDelegate implements Capability.Delete {
     private void notifyDelete(Object affectedObject, String lifecycle) {
         DeleteEvent deleteEvent = new DeleteEvent();
         deleteEvent.LIFECYCLE = lifecycle;
-        List<Object> objectList = new LinkedList<>();
-        objectList.add(affectedObject);
-        deleteEvent.affectedObjects = objectList;
+        deleteEvent.affectedObject = affectedObject;
         session.notifyListeners(deleteEvent);
     }
 
